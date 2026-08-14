@@ -23,39 +23,56 @@ func main() {
 			log.Printf("Error accept new connection %v\n", err)
 			continue
 		}
-		
+
 		go handleConnection(connection)
 
 		fmt.Printf("[+] new Client: %s\n", connection.RemoteAddr().String())
 	}
 }
 
-
-func handleConnection(conn net.Conn){
+func handleConnection(conn net.Conn) {
 
 	defer conn.Close()
 
-	buffer := make([]byte, 1024)
-
 	for {
-		
-		// lấy ra tổng đọc số byte thực tế có data thôi. 
-		noOfByteActualRead, err := conn.Read(buffer)
-		
-		if(err == io.EOF) {
- 			log.Printf("Client disconnected %v\n", err)
+
+		cmd, err := readCommand(conn)
+
+		if err == io.EOF {
+			log.Printf("Client disconnected %v\n", err)
 			break
 		}
-		
-		if (err != nil){
+
+		if err != nil {
 			log.Printf("Network error %v\n", err)
 			break
 		}
-		
-		// Cắt ra data bằng slice, cái đống element còn lại toàn null hay gì đó, đại khái data vô nghĩa.
-		dataReceived := buffer[:noOfByteActualRead]
-		// dùng %s để converse sang string, chứ để %v nó in moẹ ra số
-		log.Printf("dataReceived %s\n", dataReceived)
-	
+
+		respond(cmd, conn)
+
 	}
+}
+
+func readCommand(conn net.Conn) (string, error) {
+	buffer := make([]byte, 1024)
+	// lấy ra tổng đọc số byte thực tế có data thôi.
+	noOfByteActualRead, err := conn.Read(buffer)
+	if err != nil {
+		return "", err
+	}
+
+	// Cắt ra data bằng slice, cái đống element còn lại toàn null hay gì đó, đại khái data vô nghĩa.
+	return string(buffer[:noOfByteActualRead]), nil
+
+}
+
+func respond(cmd string, conn net.Conn) {
+	prefix := []byte("Echo: ")
+
+	var response []byte
+	response = append(response, prefix...)
+	response = append(response, cmd...)
+
+	conn.Write(response)
+
 }
